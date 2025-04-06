@@ -31,6 +31,7 @@ from app.schemas.open_food_facts.internal import (
     BreedingTypeAndQuantity,
     KnowledgePanelResponse,
 )
+from tests.app.business.open_food_facts.mocks import product_data
 
 
 @pytest.mark.asyncio

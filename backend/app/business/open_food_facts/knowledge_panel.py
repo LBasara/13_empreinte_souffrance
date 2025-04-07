@@ -24,7 +24,7 @@ from app.schemas.open_food_facts.internal import (
 logger = logging.getLogger("app")
 
 
-async def get_data_from_off(barcode: str, locale: str) -> ProductData:
+async def get_data_from_off(barcode: str, locale: str="fr", api_v3: bool=False) -> ProductData:
     """
     Retrieve useful product data from OFF to compute the breeding type and the weight of animal product
     We actually use the OFF Search-a-licious API.
@@ -33,40 +33,63 @@ async def get_data_from_off(barcode: str, locale: str) -> ProductData:
     Args:
         barcode: The product barcode
         locale: alpha2 locale (fr, en...)
+        api_v3: whether to use search-a-licious (v3) or v2. Defaults to v2 (False)
     Returns:
         A ProductData containing the name, image_url, categories and labels tags
     Raises:
         ResourceNotFoundException: If the product cannot be found or data validation fails
     """
-    url = "https://search.openfoodfacts.org/search"
+    async def get_json_reponse(url, params):
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()  # Raise exception for 4XX/5XX responses
+                json_response = response.json()
+        except Exception as e:
+                logger.warning(f"Can't get product data from OFF API: {barcode}")
+                raise ResourceNotFoundException(f"Can't get product data from OFF API: {barcode}") from e
+        return json_response
+    
     product_name_with_locale = f"product_name_{locale}"
-    tags = ["categories_tags", "labels_tags", "image_url", "product_name", product_name_with_locale]
-    params = {"q": f"code:{barcode}", "fields": ",".join(tags)}
-
+    tags = [
+            "categories_tags",
+            "labels_tags",
+            "ingredients_tags",
+            "ingredients",
+            "allergens_tags",
+            "image_url",
+            "product_name",
+            "quantity",
+            "product_quantity",
+            "product_quantity_unit",
+            product_name_with_locale]
+    params = {"fields": ",".join(tags)}    
+    
+    if api_v3:
+        url = "https://search.openfoodfacts.org/search"
+        params["q"]=f"code:{barcode}"
+        json_response=await get_json_reponse(url, params)
+        hits = json_response.get("hits")
+        if hits and isinstance(hits, list) and product_name_with_locale in hits[0]:
+            product=hits[0]
+        else:
+            logger.warning(f"No hits found for params: {params}")
+            raise ResourceNotFoundException(f"No hits returned by OFF API: {barcode}")
+    else:
+        url = f"https://world.openfoodfacts.net/api/v2/product/{barcode}"
+        params["product_type"]="food"
+        json_response=await get_json_reponse(url, params)
+        product= json_response.get("product")
+        if product is None:
+            logger.warning(f"No hits found for params: {params}")
+            raise ResourceNotFoundException(f"No hits returned by OFF API: {barcode}")     
+    product["product_name"] = product[product_name_with_locale]            
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, params=params)
-            response.raise_for_status()  # Raise exception for 4XX/5XX responses
-            json_response = response.json()
-    except Exception as e:
-        logger.warning(f"Can't get product data from OFF API: {barcode}")
-        raise ResourceNotFoundException(f"Can't get product data from OFF API: {barcode}") from e
-
-    hits = json_response.get("hits")
-    if hits and isinstance(hits, list) and product_name_with_locale in hits[0]:
-        hits[0]["product_name"] = hits[0][product_name_with_locale]
-
-    try:
-        product_response = ProductResponse.model_validate(json_response)
+        product_data = ProductData.model_validate(product)
     except ValidationError as e:
         logger.error(f"Failed to validate product data: {e}")
         raise ResourceNotFoundException(f"Failed to validate product data retrieved from OFF: {barcode}") from e
-
-    if not product_response.hits:
-        logger.warning(f"No hits found for params: {params}")
-        raise ResourceNotFoundException(f"No hits returned by OFF API: {barcode}")
-
-    product_data = product_response.hits[0]
+    
     return product_data
 
 

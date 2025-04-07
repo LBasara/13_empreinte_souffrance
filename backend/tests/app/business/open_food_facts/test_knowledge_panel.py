@@ -25,14 +25,10 @@ async def test_get_data_from_off_success():
     """Test when the OFF API returns valid data"""
     barcode = "123456789"
     mock_response_data = {
-        "hits": [
-            {
                 "categories_tags": ["en:cage-chicken-eggs", "other"],
                 "labels_tags": ["organic"],
                 "product_name": "Fake product name",
                 "image_url": "https://example.com/image.jpg",
-            }
-        ]
     }
 
     mock_response = AsyncMock()
@@ -42,7 +38,7 @@ async def test_get_data_from_off_success():
     with patch("httpx.AsyncClient.get", return_value=mock_response):
         result = await get_data_from_off(barcode, locale="en")
 
-    assert result == ProductData.model_validate(mock_response_data["hits"][0])
+    assert result == ProductData.model_validate(mock_response_data)
 
 
 @pytest.mark.asyncio
@@ -72,7 +68,7 @@ async def test_get_data_from_off_validation_error():
 
     with patch("httpx.AsyncClient.get", return_value=mock_response):
         with pytest.raises(
-            ResourceNotFoundException, match=f"Failed to validate product data retrieved from OFF: {barcode}"
+            ResourceNotFoundException, match=f"No hits returned by OFF API: {barcode}"
         ):
             await get_data_from_off(barcode, locale="en")
 

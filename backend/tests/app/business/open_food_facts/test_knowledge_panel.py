@@ -1,5 +1,5 @@
 from typing import Callable
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
 import pytest
@@ -38,7 +38,7 @@ async def test_get_data_from_off_search_a_licious_success():
 
     mock_response = AsyncMock()
     mock_response.json = MagicMock(return_value=mock_response_data)
-    mock_response.raise_for_status = AsyncMock(return_value=None)
+    mock_response.raise_for_status = Mock(return_value=None)
 
     with patch("httpx.AsyncClient.get", return_value=mock_response):
         result = await get_data_from_off_search_a_licious(barcode, locale="en")
@@ -54,7 +54,7 @@ async def test_get_data_from_off_v3_success(sample_product_data: ProductData):
 
     mock_response = AsyncMock()
     mock_response.json = MagicMock(return_value=mock_response_data)
-    mock_response.raise_for_status = AsyncMock(return_value=None)
+    mock_response.raise_for_status = Mock(return_value=None)
 
     with patch("httpx.AsyncClient.get", return_value=mock_response):
         result = await get_data_from_off_v3(barcode, locale="en")
@@ -70,7 +70,7 @@ async def test_get_data_from_off_search_a_licious_no_hits():
 
     mock_response = AsyncMock()
     mock_response.json = MagicMock(return_value=mock_response_data)
-    mock_response.raise_for_status = AsyncMock(return_value=None)
+    mock_response.raise_for_status = Mock(return_value=None)
 
     with patch("httpx.AsyncClient.get", return_value=mock_response):
         with pytest.raises(ResourceNotFoundException, match=f"No hits returned by OFF API: {barcode}"):
@@ -86,7 +86,7 @@ async def test_get_data_from_off_validation_error(get_data_from_off_function: Ca
 
     mock_response = AsyncMock()
     mock_response.json = MagicMock(return_value=mock_response_data)
-    mock_response.raise_for_status = AsyncMock(return_value=None)
+    mock_response.raise_for_status = Mock(return_value=None)
 
     with patch("httpx.AsyncClient.get", return_value=mock_response):
         with pytest.raises(

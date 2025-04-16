@@ -146,7 +146,7 @@ def calculate_egg_weight(product_data: ProductData) -> float:
     categories_tags = product_data.categories_tags or []
 
     if quantity and unit:
-        egg_weight = quantity if unit == "g" else 1.03 * quantity
+        egg_weight = float(quantity) if unit == "g" else 1.03 * float(quantity)
         # Removed call to get_egg_weight_from_quantity
         # unit is either "g" or "mL", and egg density is >~1
         # kept the function in case we adapt/use it later
@@ -168,16 +168,7 @@ def calculate_egg_number(product_data: ProductData) -> Union[int, float]:
         if n_eggs is not None:
             return n_eggs
 
-    quantity = product_data.product_quantity
-    unit = product_data.product_quantity_unit
-    categories_tags = product_data.categories_tags or []
-
-    if quantity and unit:
-        egg_weight = get_egg_weight_from_quantity(quantity, unit)
-    else:
-        egg_weight = get_total_egg_weight_from_tags(categories_tags)
-
-    return egg_weight
+    return calculate_egg_weight(product_data) / AVERAGE_EGG_WEIGHT
 
 
 def extract_quantity_and_unit(text):

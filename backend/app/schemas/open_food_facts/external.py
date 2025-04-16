@@ -12,9 +12,9 @@ class ProductData(BaseModel):
     labels_tags: List[str] | None = None
     image_url: HttpUrl | None = None
     product_name: str
+    quantity: str | None = None
     product_quantity_unit: str | None = None
     product_quantity: float | None = None
-    quantity: str | None = None
     allergens_tags: List[str] | None = None
     ingredients_tags: List[str] | None = None
     ingredients: List[dict] | None = None

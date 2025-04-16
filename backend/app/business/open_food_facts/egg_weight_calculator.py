@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Optional
 
 from app.schemas.open_food_facts.external import ProductData
 
@@ -25,6 +25,57 @@ EGG_WEIGHTS_BY_TAG = {
     55: {"grade-a-eggs", "grade-aa-eggs"},
     50: {"medium-eggs"},
 }
+
+
+DOZEN_UNIT = ["dzn", "dozen", "doz"]
+WEIGHT_UNIT = ["lb", "kg", "oz", "à", "gram", "g", "gr"]
+PIECE_UNIT = [
+    "frische",
+    "unknown",
+    "pieze",
+    "entre",
+    "entre",
+    "mixed",
+    "pack",
+    "portion",
+    "p",
+    "pk",
+    "gro",
+    "ud",
+    "uova",
+    "pz",
+    "x",
+    "moyen",
+    "stuk",
+    "st",
+    "stück",
+    "pc",
+    "eier",
+    "kpl",
+    "n",
+    "komada",
+    "gal",
+    "label",
+    "szt",
+    "stck",
+    "egg",
+    "unidade",
+    "eieren",
+    "unité",
+    "stk",
+    "oeuf",
+    "u",
+    "xl",
+    "l",
+    "m",
+    "huevo",
+    "lg",
+    "large",
+    "ovo",
+    "kla",
+    "unit",
+    "pièce",
+]
 
 
 def get_egg_weight_by_tag(categories_tags: List[str]) -> int:
@@ -89,3 +140,69 @@ def calculate_egg_weight(product_data: ProductData) -> float:
         egg_weight = get_total_egg_weight_from_tags(categories_tags)
 
     return egg_weight
+
+
+def extract_quantity_and_unit(text):
+    """
+    Extracts the first integer and optionally the first word
+    (of several letters) from a string.
+
+    Args:
+        text: The input string.
+
+    Returns:
+        A tuple containing the extracted integer (as an integer) and
+        the extracted word (as a string, or None if no word is found),
+        or (None, None) if no integer is found.
+    """
+    if text is None:
+        return None, None
+
+    # match_with_text = re.search(r'(\d+)\s*([a-zA-ZœŒçàéèêëîïôöûüÿÀÉÈÊËÎÏÔÖÛÜŸ]+)', text.lower())
+    # match_with_text = re.search(r'(\d+)\s*([a-z]+)s?\b', text)
+    match_with_text = re.search(r"(\d+,?\.?\d?)\s*([a-zçàéèêëîïôöûüÿ]+)s?\b", text.lower().replace("œ", "oe"))
+    if match_with_text:
+        quantity = float(match_with_text.group(1).replace(",", "."))
+        unit = match_with_text.group(2).rstrip("s")
+        return quantity, unit
+    else:
+        match_only_quantity = re.search(r"(\d+)", text)
+        if match_only_quantity:
+            quantity = int(match_only_quantity.group(1))
+            return quantity, None
+        else:
+            return None, None
+
+
+def get_egg_number(product_data: ProductData) -> Optional[int]:
+    """
+    Extracts a whole number of eggs from the quantity field
+
+    Args:
+        product_data: ProductData: The product_data (duh...)
+
+    Returns:
+        An integer containing the extracted integer if successful, None otherwise
+    """
+
+    if product_data.categories_tags is not None and "en:chicken-eggs" in product_data.categories_tags:  # oeuf
+        extracted_quantity, extracted_unit = extract_quantity_and_unit(product_data.quantity)
+        extracted_quantity = int(extracted_quantity)
+        if extracted_quantity is None:
+            return None
+        elif extracted_unit is None:
+            return extracted_quantity
+        elif extracted_unit in DOZEN_UNIT:
+            return 12 * extracted_quantity
+        elif extracted_unit in PIECE_UNIT:
+            return extracted_quantity
+        elif (
+            extracted_unit in WEIGHT_UNIT
+            and product_data.product_quantity_unit == "g"
+            and product_data.product_quantity is not None
+        ):
+            return int(product_data.product_quantity // AVERAGE_EGG_WEIGHT)
+        else:
+            return None
+    else:  # ovoproduit
+        return None

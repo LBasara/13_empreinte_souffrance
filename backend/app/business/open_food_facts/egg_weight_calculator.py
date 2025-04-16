@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from app.schemas.open_food_facts.external import ProductData
 
@@ -88,7 +88,7 @@ def get_egg_weight_by_tag(categories_tags: List[str]) -> int:
     return 0
 
 
-def get_number_of_eggs(categories_tags: List[str]) -> int:
+def get_number_of_eggs_from_tags(categories_tags: List[str]) -> int:
     """
     Extracts the number of eggs from tags.
     TODO: Add support for other tags
@@ -104,7 +104,7 @@ def get_total_egg_weight_from_tags(categories_tags: List[str]) -> float:
     """
     Calculates total egg weight based on standard weights and pack size.
     """
-    num_eggs = get_number_of_eggs(categories_tags)
+    num_eggs = get_number_of_eggs_from_tags(categories_tags)
     weight_per_egg = get_egg_weight_by_tag(categories_tags)
     return weight_per_egg * num_eggs
 
@@ -123,6 +123,16 @@ def get_egg_weight_from_quantity(quantity: float, unit: str) -> float:
     return 0
 
 
+def is_egg_pack(product_data: ProductData) -> bool:
+    """
+    Quick function to check whether we're dealing with egg pack
+
+    Returns:
+        True if egg, False if ovoproduct or otherwise
+    """
+    return product_data.categories_tags is not None and "en:chicken-eggs" in product_data.categories_tags
+
+
 def calculate_egg_weight(product_data: ProductData) -> float:
     """
     Calculates the weight of eggs based on the product data.
@@ -130,6 +140,32 @@ def calculate_egg_weight(product_data: ProductData) -> float:
     Returns:
         The egg weight if applicable.
     """
+
+    quantity = product_data.product_quantity
+    unit = product_data.product_quantity_unit
+    categories_tags = product_data.categories_tags or []
+
+    if quantity and unit:
+        egg_weight = get_egg_weight_from_quantity(quantity, unit)
+    else:
+        egg_weight = get_total_egg_weight_from_tags(categories_tags)
+
+    return egg_weight
+
+
+def calculate_egg_number(product_data: ProductData) -> Union[int, float]:
+    """
+    Calculates the number of eggs based on the product data.
+
+    Returns:
+        Number of eggs, if applicable.
+    """
+
+    if is_egg_pack(product_data):
+        n_eggs = get_egg_number(product_data)
+        if n_eggs is not None:
+            return n_eggs
+
     quantity = product_data.product_quantity
     unit = product_data.product_quantity_unit
     categories_tags = product_data.categories_tags or []
@@ -158,8 +194,6 @@ def extract_quantity_and_unit(text):
     if text is None:
         return None, None
 
-    # match_with_text = re.search(r'(\d+)\s*([a-zA-ZœŒçàéèêëîïôöûüÿÀÉÈÊËÎÏÔÖÛÜŸ]+)', text.lower())
-    # match_with_text = re.search(r'(\d+)\s*([a-z]+)s?\b', text)
     match_with_text = re.search(r"(\d+,?\.?\d?)\s*([a-zçàéèêëîïôöûüÿ]+)s?\b", text.lower().replace("œ", "oe"))
     if match_with_text:
         quantity = float(match_with_text.group(1).replace(",", "."))
@@ -179,30 +213,29 @@ def get_egg_number(product_data: ProductData) -> Optional[int]:
     Extracts a whole number of eggs from the quantity field
 
     Args:
-        product_data: ProductData: The product_data (duh...)
+        product_data: ProductData: The product_data
+        (expected to have "en:chicken-eggs" in product_data.categories_tags)
 
     Returns:
         An integer containing the extracted integer if successful, None otherwise
     """
-
-    if product_data.categories_tags is not None and "en:chicken-eggs" in product_data.categories_tags:  # oeuf
-        extracted_quantity, extracted_unit = extract_quantity_and_unit(product_data.quantity)
-        extracted_quantity = int(extracted_quantity)
-        if extracted_quantity is None:
-            return None
-        elif extracted_unit is None:
-            return extracted_quantity
-        elif extracted_unit in DOZEN_UNIT:
-            return 12 * extracted_quantity
-        elif extracted_unit in PIECE_UNIT:
-            return extracted_quantity
-        elif (
-            extracted_unit in WEIGHT_UNIT
-            and product_data.product_quantity_unit == "g"
-            and product_data.product_quantity is not None
-        ):
-            return int(product_data.product_quantity // AVERAGE_EGG_WEIGHT)
-        else:
-            return None
-    else:  # ovoproduit
+    if not is_egg_pack(product_data):  # ovoproduct or otherwise
+        return None
+    extracted_quantity, extracted_unit = extract_quantity_and_unit(product_data.quantity)
+    extracted_quantity = int(extracted_quantity)
+    if extracted_quantity is None:
+        return None
+    elif extracted_unit is None:
+        return extracted_quantity
+    elif extracted_unit in DOZEN_UNIT:
+        return 12 * extracted_quantity
+    elif extracted_unit in PIECE_UNIT:
+        return extracted_quantity
+    elif (
+        extracted_unit in WEIGHT_UNIT
+        and product_data.product_quantity_unit == "g"
+        and product_data.product_quantity is not None
+    ):
+        return int(product_data.product_quantity // AVERAGE_EGG_WEIGHT)
+    else:
         return None

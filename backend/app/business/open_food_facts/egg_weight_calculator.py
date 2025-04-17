@@ -174,6 +174,17 @@ def calculate_egg_weight_and_reason(product_data: ProductData) -> Tuple[float, r
         return get_total_egg_weight_from_tags(categories_tags), reasons.from_category_tags
 
 
+def calculate_egg_weight(product_data: ProductData) -> float:
+    """
+    Calculates the weight of eggs based on the product data.
+
+    Returns:
+        The egg weight if applicable.
+    """
+
+    return calculate_egg_weight_and_reason(product_data)[0]
+
+
 def extract_quantity_and_unit(text):
     """
     Extracts the first integer and optionally the first word

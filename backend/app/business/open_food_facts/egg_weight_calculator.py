@@ -1,10 +1,10 @@
 import re
-from typing import List, Optional, Union
+from enum import Enum
+from typing import List, Optional, Tuple, Union
 
 from app.schemas.open_food_facts.external import ProductData
 
 AVERAGE_EGG_WEIGHT = 50
-
 
 UNIT_CONVERSIONS = {
     "pcs": lambda q: float(q) * AVERAGE_EGG_WEIGHT,
@@ -133,7 +133,24 @@ def is_egg_pack(product_data: ProductData) -> bool:
     return product_data.categories_tags is not None and "en:chicken-eggs" in product_data.categories_tags
 
 
-def calculate_egg_weight(product_data: ProductData) -> float:
+reasons = Enum(
+    "reasons",
+    [
+        "not_egg_pack",
+        "no_extracted_quantity",
+        "no_extracted_unit",
+        "dozen_unit",
+        "piecewise_unit",
+        "product_quantity_over_avg_weight",
+        "other_case",
+        "quantity_unit_g",
+        "quantity_unit_mL",
+        "from_category_tags",
+    ],
+)
+
+
+def calculate_egg_weight_and_reason(product_data: ProductData) -> Tuple[float, reasons]:
     """
     Calculates the weight of eggs based on the product data.
 
@@ -146,29 +163,15 @@ def calculate_egg_weight(product_data: ProductData) -> float:
     categories_tags = product_data.categories_tags or []
 
     if quantity and unit:
-        egg_weight = float(quantity) if unit == "g" else 1.03 * float(quantity)
+        if unit == "g":
+            return float(quantity), reasons.quantity_unit_g
+        else:  # mL
+            return 1.03 * float(quantity), reasons.quantity_unit_mL
         # Removed call to get_egg_weight_from_quantity
         # unit is either "g" or "mL", and egg density is >~1
         # kept the function in case we adapt/use it later
     else:
-        egg_weight = get_total_egg_weight_from_tags(categories_tags)
-
-    return egg_weight
-
-
-def calculate_egg_number(product_data: ProductData) -> Union[int, float]:
-    """
-    Calculates the number of eggs based on the product data.
-
-    Returns:
-        Number of eggs, if applicable.
-    """
-    if is_egg_pack(product_data):
-        n_eggs = get_egg_number(product_data)
-        if n_eggs is not None:
-            return n_eggs
-
-    return calculate_egg_weight(product_data) / AVERAGE_EGG_WEIGHT
+        return get_total_egg_weight_from_tags(categories_tags), reasons.from_category_tags
 
 
 def extract_quantity_and_unit(text):
@@ -201,9 +204,10 @@ def extract_quantity_and_unit(text):
             return None, None
 
 
-def get_egg_number(product_data: ProductData) -> Optional[int]:
+def compute_egg_number_and_reason(product_data: ProductData) -> Tuple[Optional[Union[int, float]], reasons]:
     """
-    Extracts a whole number of eggs from the quantity field
+    Extracts a whole number of eggs from the quantity field,
+    along with the reason why this number is given.
 
     Args:
         product_data: ProductData: The product_data
@@ -211,24 +215,37 @@ def get_egg_number(product_data: ProductData) -> Optional[int]:
 
     Returns:
         An integer containing the extracted integer if successful, None otherwise
+        reason (Enum Weight_reasons)
+
     """
-    if not is_egg_pack(product_data):  # ovoproduct or otherwise
-        return None
-    extracted_quantity, extracted_unit = extract_quantity_and_unit(product_data.quantity)
-    extracted_quantity = int(extracted_quantity)
-    if extracted_quantity is None:
-        return None
-    elif extracted_unit is None:
-        return extracted_quantity
-    elif extracted_unit in DOZEN_UNIT:
-        return 12 * extracted_quantity
-    elif extracted_unit in PIECE_UNIT:
-        return extracted_quantity
-    elif (
-        extracted_unit in WEIGHT_UNIT
-        and product_data.product_quantity_unit == "g"
-        and product_data.product_quantity is not None
-    ):
-        return int(product_data.product_quantity // AVERAGE_EGG_WEIGHT)
-    else:
-        return None
+    if is_egg_pack(product_data):
+        extracted_quantity, extracted_unit = extract_quantity_and_unit(product_data.quantity)
+        extracted_quantity = int(extracted_quantity)
+        if extracted_quantity is None:
+            return None, reasons.no_extracted_quantity
+        elif extracted_unit is None:
+            return extracted_quantity, reasons.no_extracted_unit
+        elif extracted_unit in DOZEN_UNIT:
+            return 12 * extracted_quantity, reasons.dozen_unit
+        elif extracted_unit in PIECE_UNIT:
+            return extracted_quantity, reasons.piecewise_unit
+        elif (
+            extracted_unit in WEIGHT_UNIT
+            and product_data.product_quantity_unit == "g"
+            and product_data.product_quantity is not None
+        ):
+            return int(product_data.product_quantity // AVERAGE_EGG_WEIGHT), reasons.product_quantity_over_avg_weight
+
+    weight, reason = calculate_egg_weight_and_reason(product_data)
+    return weight / AVERAGE_EGG_WEIGHT, reason
+
+
+def calculate_egg_number(product_data: ProductData) -> Union[int, float]:
+    """
+    Calculates the number of eggs based on the product data.
+
+    Returns:
+        Number of eggs, if applicable.
+    """
+    egg_number, reason = compute_egg_number_and_reason(product_data)
+    return egg_number if egg_number is not None else 0

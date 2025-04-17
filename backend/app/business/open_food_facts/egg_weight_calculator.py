@@ -220,7 +220,6 @@ def compute_egg_number_and_reason(product_data: ProductData) -> Tuple[Optional[U
     """
     if is_egg_pack(product_data):
         extracted_quantity, extracted_unit = extract_quantity_and_unit(product_data.quantity)
-        extracted_quantity = int(extracted_quantity)
         if extracted_quantity is None:
             return None, reasons.no_extracted_quantity
         elif extracted_unit is None:

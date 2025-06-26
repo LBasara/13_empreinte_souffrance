@@ -5,7 +5,6 @@ from models.lewagon_ocr.OpenFoodFactsCategorizer.predictor import Predictor
 from models.lewagon_ocr.OpenFoodFactsCategorizer.cleaner import Cleaner
 import requests
 from models.lewagon_ocr.OpenFoodFactsCategorizer.data import get_data_from_ocr
-import csv
 import pandas as pd
 from tqdm import tqdm
 import json

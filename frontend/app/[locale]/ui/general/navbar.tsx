@@ -1,19 +1,41 @@
-import Link from 'next/link';
-import NavLinks from '@/app/[locale]/ui/general/nav-links';
-import { LocaleSelect } from '../localselect';
+import { getI18n } from '@/locales/server';
 
-export default function Navbar() {
+import NavLinks from '@/app/[locale]/ui/general/elements/nav-links';
+import { LocaleSelect } from '../localselect';
+import Logo from './home-page/elements/logo-walfare-footprint';
+
+export default async function Navbar() {
+  const t = await getI18n();
+
+    const links= [
+    { name: t('NavBarLink.methodology'), href: '/methodology' },
+    { name: t('NavBarLink.calculator'), href: '/calculator' },
+    { name: t('NavBarLink.about'), href: '/about' },
+  ];
+  
   return (
     <>
-      <div className="flex h-full w-full px-3 py-4 md:px-2 items-center justify-center bg-indigo-800">
-        <Link className="flex h-4 items-center justify-center rounded-md bg-blue-600 p-4" href="/">
-          <div className="w-38 text-white">ES Logo placeholder</div>
-        </Link>
-        <div className="flex gap-1 grow justify-start w-full ml-3">
-          <NavLinks />
+      <header className="bg-red-50 p-4 w-full">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-4">
+          <div className="flex justify-between md:justify-start items-center gap-2 w-full md:w-auto">
+            <div className="flex justify-start items-center gap-2">
+              <Logo />
+            </div>
+            <div className="md:hidden">
+              <LocaleSelect />
+            </div>
+          </div>
+
+          {/* Centre : liens */}
+          <nav className="flex justify-center items-center md:justify-end gap-4 font-mono font-black uppercase text-sm flex-grow basis-0 min-w-0">
+            <NavLinks links={links}/>
+          </nav>
+
+          <div className="hidden md:flex justify-end">
+            <LocaleSelect />
+          </div>
         </div>
-        <LocaleSelect />
-      </div>
+      </header>
     </>
   );
 }

@@ -9,7 +9,7 @@ from starlette.testclient import TestClient
 from app.enums.open_food_facts.enums import AnimalType, LayingHenBreedingType, PainIntensity, PainType
 from app.main import app
 from app.schemas.open_food_facts.external import ProductData
-from app.schemas.open_food_facts.internal import AnimalPainReport, BreedingTypeAndWeight, PainLevelData, PainReport
+from app.schemas.open_food_facts.internal import AnimalPainReport, BreedingTypeAndQuantity, PainLevelData, PainReport
 
 
 @pytest_asyncio.fixture
@@ -37,7 +37,7 @@ def sample_product_data() -> ProductData:
     Contains cage chicken eggs category...
     """
     return ProductData(
-        categories_tags=["en:eggs", "cat1", "en:cage-chicken-eggs"],
+        categories_tags=["en:eggs", "en:chicken-eggs", "cat1", "en:cage-chicken-eggs"],
         labels_tags=["label1", "label2"],
         product_name="Fake product name",
         image_url=HttpUrl("https://example.com/image.jpg"),
@@ -53,55 +53,11 @@ def sample_product_data() -> ProductData:
 
 
 @pytest.fixture
-def weight_product_quantity_and_unit() -> ProductData:
+def laying_hen_breeding_type() -> BreedingTypeAndQuantity:
     """
-    Fixture that provides sample product data for testing.
-    Contains data from product with code 9338295000049
+    Fixture that provides a sample BreedingTypeAndQuantity for laying hens.
     """
-    return ProductData(
-        categories_tags=["en:farming-productsen:eggsen:chicken-eggs", "en:free-range-chicken-eggs"],
-        labels_tags=[],
-        product_name="Eggs",
-        image_url=HttpUrl("https://example.com/image.jpg"),
-        quantity="800 g",
-        product_quantity=800,
-        product_quantity_unit="g",
-        allergens_tags=[],
-        ingredients_tags=[],
-        ingredients=[],
-        countries="au",
-        countries_tags=["en:australia"],
-    )
-
-
-@pytest.fixture
-def weight_quantity_only_digits() -> ProductData:
-    """
-    Fixture that provides sample product data for testing.
-    Contains data from product with code 3770007836007
-    """
-    return ProductData(
-        categories_tags=["en:farming-productsen:eggsen:chicken-eggs", "en:free-range-chicken-eggs"],
-        labels_tags=[],
-        product_name="6 oeufs frais plein air de poules Marans",
-        image_url=HttpUrl("https://example.com/image.jpg"),
-        quantity="6",
-        product_quantity=None,
-        product_quantity_unit=None,
-        allergens_tags=[],
-        ingredients_tags=[],
-        ingredients=[],
-        countries="fr",
-        countries_tags=["en:france"],
-    )
-
-
-@pytest.fixture
-def laying_hen_breeding_type() -> BreedingTypeAndWeight:
-    """
-    Fixture that provides a sample BreedingTypeAndWeight for laying hens.
-    """
-    return BreedingTypeAndWeight(breeding_type=LayingHenBreedingType.FURNISHED_CAGE, animal_product_weight=200)
+    return BreedingTypeAndQuantity(breeding_type=LayingHenBreedingType.FURNISHED_CAGE, quantity=200)
 
 
 @pytest.fixture
@@ -130,7 +86,7 @@ def animal_pain_report(laying_hen_breeding_type, pain_levels) -> AnimalPainRepor
     Fixture that provides a sample AnimalPainReport for a laying hen.
     """
     return AnimalPainReport(
-        animal_type=AnimalType.LAYING_HEN, pain_levels=pain_levels, breeding_type_with_weight=laying_hen_breeding_type
+        animal_type=AnimalType.LAYING_HEN, pain_levels=pain_levels, breeding_type_and_quantity=laying_hen_breeding_type
     )
 
 

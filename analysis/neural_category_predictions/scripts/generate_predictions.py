@@ -88,7 +88,7 @@ class CategoryPredictor:
             try:
                 url = self.lewagon_off_categorizer._get_image_folder_url()
                 if url:
-                    url = url + f'/{i}.json'
+                    url = f'{url}/{i}.json'
                     ocr_text_per_page = get_data_from_ocr(url)
                     text.append(ocr_text_per_page)
                 time.sleep(0.5)
